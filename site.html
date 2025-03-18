@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLS Video Player</title>
+</head>
+<body>
+    <h2>Enter M3U8 URL</h2>
+    <input type="text" id="m3u8-url" placeholder="Enter M3U8 link here" size="50">
+    <button onclick="playVideo()">Play</button>
+    
+    <video id="video" controls width="640" height="360"></video>
+    
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        // Save and retrieve cookies
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                let date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + value + expires + "; path=/";
+        }
+
+        function getCookie(name) {
+            let nameEQ = name + "=";
+            let ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        function playVideo() {
+            var video = document.getElementById('video');
+            var videoSrc = document.getElementById('m3u8-url').value;
+            
+            if (!videoSrc) {
+                alert("Please enter a valid M3U8 URL.");
+                return;
+            }
+            
+            setCookie("videoUrl", videoSrc, 30); // Save URL for 30 days
+            
+            if (Hls.isSupported()) {
+                var hls = new Hls();
+                hls.loadSource(videoSrc);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.currentTime = parseFloat(getCookie("videoTime")) || 0;
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = videoSrc;
+                video.addEventListener('loadedmetadata', function() {
+                    video.currentTime = parseFloat(getCookie("videoTime")) || 0;
+                    video.play();
+                });
+            } else {
+                alert("Your browser does not support HLS playback.");
+            }
+        }
+
+        // Restore previous video and timestamp
+        window.onload = function() {
+            var savedUrl = getCookie("videoUrl");
+            if (savedUrl) {
+                document.getElementById('m3u8-url').value = savedUrl;
+                playVideo();
+            }
+        };
+        
+        // Save timestamp periodically
+        setInterval(() => {
+            let video = document.getElementById('video');
+            if (!video.paused && video.currentTime) {
+                setCookie("videoTime", video.currentTime, 30);
+            }
+        }, 5000); // Save every 5 seconds
+    </script>
+</body>
+</html>
